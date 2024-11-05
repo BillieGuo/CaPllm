@@ -1,0 +1,75 @@
+#Query: go forward 5m
+#this is a single action. So in the list, there is only one list. Because 1 represent go forward and the distance is 5m, so the first number in the list is 1, the second number in the list is 5.
+[[1, 5, 'FF', 'FF', 'FF']]
+#done
+
+#Query: go back 3m
+#this is a single action. So in the list, there is only one list. Because 1 represent go forward or go back, and the distance is -3m, so the first number in the list is 1, the second number in the list is -3.
+[[1, -3, 'FF', 'FF', 'FF']]
+#done
+
+#Query: go forward (a bit)
+#this is a single action. So in the list, there is only one list. Because 1 represent go forward,so the first number in the list is 1.And the distance is unknown, so we use 1 as the default number in the list.
+[[1, 1, 'FF', 'FF', 'FF']]
+#done
+
+
+#Query: go (to your) right 3m 
+#this is a single action. So in the list, there is only one list. Because 2 represent go right and the distance is 3m, so the first number in the list is 2, the second number in the list is 3.
+[[2, -3, 'FF', 'FF', 'FF']]
+#done
+
+
+#Query: move forward while facing a point (3, 4)
+#this is a single action. So in the list, there is only one list. Because 1 represent go forward, so the first number in the list is 1, the second number in the list is 'FF', the point is (3, 4), so the third and forth number is 3 and 4.
+[[1, '+FF', 3, 4, 'FF']]
+#done
+
+#Query: go to point (3, 4)
+#this is a single action. So in the list, there is only one list. Because 3 represent go to a given point, so the first number in the list is 4, no name of point is mentioned, the second element is 'FF', the point is (3, 4), so the third fourth number is 3 and 4. No facing is needed, thus the rest of the list is 'FF'.
+[[3, 'FF', 3, 4, 'FF', 'FF', 'FF']]
+#done
+
+#Query: go to home
+#this is a single action. So in the list, there is only one list. Because 3 represent go to a given point, so the first number in the list is 3, the point is home as the second element, so the third foutrh number is 'FF' and 'FF'.
+[[3, 'home', 'FF', 'FF', 'FF', 'FF', 'FF']]
+#done
+
+
+#Query: rotate around point (4.2, 4.5) with radius 2.6 
+#this is a single action. So in the list, there is only one list. Because 4 represent rotate around a given point or object, so the first number in the list is 4, and no name of location/object, the second element is 'FF', the point is (4.2, 4.5), so the third and fourth number is 4.2 and 4.5, the radius is 2.6, so the fifth number is 2.6, the number of circles is 1, so the sixth number is 1. No facing is needed, thus the seventh number is 0, and the rest of the list is 'FF'.
+[[4, 'FF', 4.2, 4.5, 2.6, 1, 0, 'FF', 'FF']]
+#done
+
+#Query: rotate around home with radius 2.6 while facing it.
+#this is a single action. So in the list, there is only one list. Because 4 represent rotate around a given point or object, so the first number in the list is 4, the point is home as the second element, so the third and forth number is 'FF' and 'FF', the radius is 2.6, so the fifth number is 2.6, the number of circles is 1, so the sixth number is 1, the facing is needed, thus the seventh number is 1, and the rest of the list is 'FF'.
+[[4, 'home', 'FF', 'FF', 2.6, 1, 1, 'FF', 'FF']]
+#done
+
+#Query: go forward 2m and then go left 3m. finally draw a circle around point (1, 2) with radius 2 for 3 round and facing point (3,4).
+[[1, 2, 'FF', 'FF', 'FF'], [2, 3, 'FF', 'FF', 'FF'], [4, 'FF', 1, 2, 2, 3, 1, 3, 4]]
+#done
+
+#Query: set a point at (3, 4) named Home and then go to Home.
+[[5, 0, 3, 4, 'home'], [3, 'home', 'FF', 'FF', 'FF', 'FF', 'FF']]
+#done
+
+#Query: mark a point at current position.
+#this is a single action. So in the list, there is only one list. Because 5 represent mark a point, so the first number in the list is 5, the second number is 1, the third and forth number is 'FF' and 'FF', no name is mentioned.
+[[5, 1, 'FF', 'FF', 'FF']]
+#done
+
+#Query: turn clockwise / right
+[[6, 'FF', 'FF', 'FF', -1, 90]]
+#done
+
+#Query: turn to point (3, 4)
+[[6, 'FF', 3, 4, 'FF', 'FF']]
+#done
+
+#Query: turn to place named Home but not move
+[[6, 'home', 'FF', 'FF', 'FF', 'FF']]
+#done
+
+#Query: detect/find/recognize (object named) apple
+[[20, 'apple']]
