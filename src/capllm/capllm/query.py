@@ -15,29 +15,39 @@ from geometry_msgs.msg import PointStamped
 from std_msgs.msg import String
 
 class QUERY(Node):
-    def __init__(self):
-        super().__init__('Query')
-        self.query_pub = self.create_publisher(
+	def __init__(self):
+		super().__init__('Query')
+		self.query_pub = self.create_publisher(
 			String,
 			'query',
 			10)
-        self.response_sub = self.create_subscription(
-            String, 
-            'response', 
-            self.query_callback, 
-            10)
-        self.response_sub
+		self.response_sub = self.create_subscription(
+			String, 
+			'response', 
+			self.query_callback, 
+			10)
+		self.response_sub
+		self.voice_input_sub = self.create_subscription(
+			String,
+			'voice_input',
+			self.voice_input_callback,
+			10)
+		self.voice_input_sub
 
 	# Receive response from LLM
-    def query_callback(self, msg):
-        # self.get_logger().info('I heard: "%s"' % msg)	
-        print(msg.data)
-        
+	def query_callback(self, msg):
+		self.get_logger().info('BaseMotion: "%s"' % msg)	
+		
 	# Publish command to LLM
-    def publish_cmd(self, cmd):
-        msg = String()
-        msg.data = cmd
-        self.query_pub.publish(msg)
+	def publish_cmd(self, cmd):
+		msg = String()
+		msg.data = cmd
+		self.query_pub.publish(msg)
+
+	# Receive voice input
+	def voice_input_callback(self, msg):
+		self.get_logger().info('I heard: "%s"' % msg)	
+		self.voice_input = msg.data
 
 def model_init():
 	cfg = get_config('capllm/configs/config.yaml')['lmps']
@@ -76,7 +86,13 @@ def main():
 	action_history_idx = 0
 
 	while True:
-		input_text = input("\n>>Prompt: ")
+	# if True: # test only
+		# input_text = input("\n>>Prompt: ")
+		rclpy.spin_once(query)
+		input_text = query.voice_input
+		# input_text = "turn left for 180 degree and Go forward." # test only
+		if not input_text:
+			continue
 		if input_text == 'exit':
 			break
 		if input_text in ['stop', 'Stop', 'STOP', 'break', 'Break', 'BREAK', 'exit', 'Exit', 'EXIT']:
@@ -86,15 +102,18 @@ def main():
 		# Main loop
 		success = False
 		while not success:
+
+			# history stored in format of [input_text, result]
 			# result, success = preview(input_text)  
 			# model_input = f'Last operation:\nQuery:{query_history[query_history_idx][0]}\nResult:{query_history[query_history_idx][1]}\n\nCurrent operation: {input_text}\n{result}'
 			# model_input = f'Query:{input_text}\nPossible explaination:{result}'
+
 			model_input = f'Query: {input_text}'
 			# print("*"*80)
 			# print(model_input)
 			print("*"*80)
 			result, success = model(model_input)
-			print(result)
+			print(result, success)
 			print("*"*80)
 			# input()
 			# continue
@@ -102,6 +121,7 @@ def main():
 				# query_history_idx = (query_history_idx + 1) % query_history_max_len
 				# query_history[query_history_idx] = [input_text, result]
 				query.publish_cmd(result)
+				query.voice_input = None
 
 	rclpy.shutdown()
  

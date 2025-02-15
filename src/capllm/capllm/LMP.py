@@ -18,15 +18,15 @@ class LMP:
         self.tokenizer = None
         self.fixed_vars = fixed_vars
         self.variable_vars = variable_vars
-        self.load_model()
-    
-    # get the configuration
-    def config(self):
-        load_dotenv()
+        load_dotenv(dotenv_path=os.getcwd()+'/src/capllm/capllm/.env')
         self.openai_key = os.getenv("OPENAI_API_KEY")
         self.openai_endpoint = os.getenv("OPENAI_API_ENDPOINT")
         self.openai_version = os.getenv("OPENAI_API_VERSION")
         self.hf_token = os.getenv("HF_TOKEN")
+        self.load_model()
+    
+    # get the configuration
+    def config(self):
         if 'gpt' in self.cfg['model'] :
             openai.api_type = "azure"
             openai.api_key = self.openai_key
@@ -111,7 +111,7 @@ class LMP:
             
             # special case
             if not final:
-                return None
+                return None, False
             if self.cfg['heirarchy'] == 'preview':
                 return final, True
             

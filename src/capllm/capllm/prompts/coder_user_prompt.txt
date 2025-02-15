@@ -9,8 +9,8 @@
 #done
 
 #Query: go forward (a bit)
-#this is a single action. So in the list, there is only one list. Because 1 represent go forward,so the first number in the list is 1.And the distance is unknown, so we use 1 as the default number in the list.
-[[1, 1, 'FF', 'FF', 'FF']]
+#this is a single action. So in the list, there is only one list. Because 1 represent go forward,so the first number in the list is 1.And the distance is unknown, so we use 0.2 as the default number in the list.
+[[1, 0.2, 'FF', 'FF', 'FF']]
 #done
 
 

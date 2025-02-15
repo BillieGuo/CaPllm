@@ -28,11 +28,18 @@ class Rover(Node):
             'clicked_point',
             10
         )
-        # Rover navigation reply subscriber
-        self.nav_reply_sub = self.create_subscription(
+        # Rover navigation reply (Position) subscriber
+        self.nav_reply_pos_sub = self.create_subscription(
             Bool,
             'dstar_arrive',
             self.nav_reply_callback,
+            10
+        )
+        # Rover navigation reply (Angle) subscriber
+        self.nav_reply_angle_sub = self.create_subscription(
+            Bool,
+            'angle_arrive',
+            self.nav_angle_reply_callback,
             10
         )
         # Rover vision detect subscriber
@@ -48,22 +55,31 @@ class Rover(Node):
         self.LocationLibrary = {}
         self.facing_flag = False
         self.facing_point = None
-        self.nav_arrived = False 
+        self.nav_arrived_pos = False 
+        self.nav_arrived_angle = False 
         self.delta_theta = 0.0
         self.vision_detect = [0.0, 0.0] # [x, y]
-        self.watch_dog = 0
+        self.watch_dog1 = 0
+        self.watch_dog2 = 0
 
     def vision_detect_callback(self, msg):
         self.vision_detect = [msg.point.x, msg.point.y]
 
     def nav_reply_callback(self, msg):
         # self.get_logger().info(f'nav_reply: {msg.data}')
-        self.watch_dog += 1
-        if msg.data and self.watch_dog > 10:
-            self.nav_arrived = True
-            self.watch_dog = 0  
-        else:
-            self.nav_arrived = False
+        self.watch_dog1 += 1
+        if msg.data and self.watch_dog1 > 5:
+            self.nav_arrived_pos = True
+            self.get_logger().info(f'point reached')
+            self.watch_dog1 = 0  
+    
+    def nav_angle_reply_callback(self, msg):
+        # self.get_logger().info(f'nav_reply: {msg.data}')
+        self.watch_dog2 += 1
+        if msg.data and self.watch_dog2 > 5:
+            self.nav_arrived_angle = True
+            self.get_logger().info(f'angle reached')
+            self.watch_dog2 = 0
             
 
     def odom_callback(self, msg):
@@ -76,18 +92,18 @@ class Rover(Node):
         point_msg = PointStamped()
         timer_period = 0.5
 
-        # get and limit angular velocity
-        delta_theta = target_point[2] - self.current_pose[2]
-        if delta_theta > PI:
-            delta_theta -= 2*PI
-        if delta_theta < -PI:
-            delta_theta += 2*PI
-        self.delta_theta = delta_theta
-        wz = value_CLIP((delta_theta / timer_period), -MAX_OMEGA, MAX_OMEGA)
+        # # get and limit angular velocity
+        # delta_theta = target_point[2] - self.current_pose[2]
+        # if delta_theta > PI:
+        #     delta_theta -= 2*PI
+        # if delta_theta < -PI:
+        #     delta_theta += 2*PI
+        # self.delta_theta = delta_theta
+        # wz = value_CLIP((delta_theta / timer_period), -MAX_OMEGA, MAX_OMEGA)
 
         point_msg.point.x = float(target_point[0])
         point_msg.point.y = float(target_point[1])
-        point_msg.point.z = float(wz)
+        point_msg.point.z = float(target_point[2])
         
         self.point_pub.publish(point_msg)
 
@@ -171,17 +187,18 @@ class BASEMOTION(Node):
                 for target_point in path:
                     rclpy.spin_once(self.rover, timeout_sec=0.01)
                     self.rover.last_pose = self.rover.current_pose
-                    self.rover.nav_arrived = False
-                    print("Ready to move...")
-                    self.publish_response("Ready to move...")
+                    self.rover.nav_arrived_pos = False
+                    self.rover.nav_arrived_angle = False
+                    print("Ready to move..."+f'{command}' )
+                    self.publish_response("Ready to move..."+f'{command}')
                     # continue # debug purpose
-                    while (self.rover.nav_arrived == False) or (self.rover.delta_theta > ANGLE_THRESHOLD or self.rover.delta_theta < -ANGLE_THRESHOLD):
-                        print(cnt)
-                        cnt+=1
-                        rclpy.spin_once(self.rover, timeout_sec=0.01)
+                    while (self.rover.nav_arrived_pos == False) or (self.rover.nav_arrived_angle == False):
+                        # print(cnt)
+                        # cnt+=1
+                        rclpy.spin_once(self.rover, timeout_sec=0.1)
                         rclpy.spin_once(self, timeout_sec=0.01)
                         self.pose_now = self.rover.current_pose
-                        print("target: ", target_point, "current: ", self.pose_now)
+                        self.get_logger().info(f"target: {target_point}, current: {self.pose_now}, command: {command}, nav_arrived_pos: {self.rover.nav_arrived_pos}, nav_arrived_angle: {self.rover.nav_arrived_angle}")
                         if (self.force_stop == True):
                             self.rover.publish_point(self.rover.current_pose)
                             # print("Force stop...")
@@ -191,7 +208,8 @@ class BASEMOTION(Node):
                             self.rover.publish_point(target_point)
                     self.rover.facing_flag = False
                     self.rover.facing_point = None
-                    self.rover.nav_arrived = False
+                    self.rover.nav_arrived_pos = False
+                    self.rover.nav_arrived_angle = False
 
     # Main loop
     def run(self):
@@ -216,12 +234,13 @@ def go_Xaxis(cmd, cmd_node):
     rclpy.spin_once(cmd_node)
     position     = cmd_node.current_pose
     euler = position[2]
-    if dis == '+FF':
-        dis = 1
+    if dis == '+FF' or dis == 'FF':
+        dis = 0.2
     elif dis == '-FF':
-        dis = -1
+        dis = -0.2
     position[0] += dis*math.cos(euler)
     position[1] += dis*math.sin(euler)
+
     if namef in cmd_node.LocationLibrary:
         x_f      = cmd_node.LocationLibrary[namef][0]
         y_f      = cmd_node.LocationLibrary[namef][1]
@@ -231,7 +250,6 @@ def go_Xaxis(cmd, cmd_node):
         y_f      = position[1]
     # cmd_node.facing_flag = True
     # cmd_node.facing_point = [x_f, y_f]
-    
     point.append(position)
     return point
 
@@ -247,10 +265,10 @@ def go_Yaxis(cmd, cmd_node):
     euler = position[2] + 90.0 / 180.0 * PI
     
 
-    if dis == '+FF':
-        dis = 1
+    if dis == '+FF' or dis == 'FF':
+        dis = 0.2
     elif dis == '-FF':
-        dis = -1
+        dis = -0.2
     position[0] += dis*math.cos(euler)
     position[1] += dis*math.sin(euler)
     if namef in cmd_node.LocationLibrary:
