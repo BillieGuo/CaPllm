@@ -18,7 +18,7 @@ class LMP:
         self.tokenizer = None
         self.fixed_vars = fixed_vars
         self.variable_vars = variable_vars
-        load_dotenv(dotenv_path=os.getcwd()+'/src/capllm/capllm/.env')
+        load_dotenv(dotenv_path=os.getcwd()+'/src/capllm/.env')
         self.openai_key = os.getenv("OPENAI_API_KEY")
         self.openai_endpoint = os.getenv("OPENAI_API_ENDPOINT")
         self.openai_version = os.getenv("OPENAI_API_VERSION")

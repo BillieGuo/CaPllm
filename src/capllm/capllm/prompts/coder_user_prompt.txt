@@ -71,5 +71,18 @@
 [[6, 'home', 'FF', 'FF', 'FF', 'FF']]
 #done
 
+#Query: facing towards home
+[[6, 'home', 'FF', 'FF', 'FF', 'FF']]
+#done
+
 #Query: detect/find/recognize (object named) apple
 [[20, 'apple']]
+#done
+
+#Query: take a photo
+[[21]]
+#done
+
+#Query: take a picture
+[[21]]
+#done

@@ -14,6 +14,8 @@ from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import PointStamped
 from std_msgs.msg import String
 
+stopping_vocab_list = ['stop', 'Stop', 'STOP', 'Stop.', 'break', 'Break', 'BREAK', 'Break.', 'exit', 'Exit', 'EXIT', 'Exit.', 'Quit', 'quit', 'QUIT', 'Quit.']
+
 class QUERY(Node):
 	def __init__(self):
 		super().__init__('Query')
@@ -64,7 +66,8 @@ def model_init():
 
 	# high-level LLM setup
 	coder = LMP("coder", cfg['coder'], fixed_vars, variable_vars)
-	previewer = None # LMP("previewer", cfg['previewer'])
+	previewer = LMP("previewer", cfg['previewer'])
+	# previewer = None # 
  
 	return previewer, coder
 
@@ -87,15 +90,15 @@ def main():
 
 	while True:
 	# if True: # test only
-		# input_text = input("\n>>Prompt: ")
-		rclpy.spin_once(query)
-		input_text = query.voice_input
+		input_text = input("\n>>Prompt: ")
+		# rclpy.spin_once(query)
+		# input_text = query.voice_input
 		# input_text = "turn left for 180 degree and Go forward." # test only
 		if not input_text:
 			continue
 		if input_text == 'exit':
 			break
-		if input_text in ['stop', 'Stop', 'STOP', 'break', 'Break', 'BREAK', 'exit', 'Exit', 'EXIT']:
+		if input_text in stopping_vocab_list:
 			query.publish_cmd("stop")
 			continue
 
@@ -104,11 +107,12 @@ def main():
 		while not success:
 
 			# history stored in format of [input_text, result]
-			# result, success = preview(input_text)  
-			# model_input = f'Last operation:\nQuery:{query_history[query_history_idx][0]}\nResult:{query_history[query_history_idx][1]}\n\nCurrent operation: {input_text}\n{result}'
-			# model_input = f'Query:{input_text}\nPossible explaination:{result}'
-
-			model_input = f'Query: {input_text}'
+			print("*"*80)
+			result, success = preview(input_text)  
+			print(result, success)
+			print("*"*80)
+			# model_input = f'Query: {input_text}'
+			model_input = f'Query: {result}'
 			# print("*"*80)
 			# print(model_input)
 			print("*"*80)

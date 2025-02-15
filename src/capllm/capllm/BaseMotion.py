@@ -10,6 +10,7 @@ import subprocess
 PI = math.pi
 ANGLE_THRESHOLD = 0.09
 MAX_OMEGA = 0.6
+stopping_vocab_list = ['stop', 'Stop', 'STOP', 'Stop.', 'break', 'Break', 'BREAK', 'Break.', 'exit', 'Exit', 'EXIT', 'Exit.', 'Quit', 'quit', 'QUIT', 'Quit.']
 
 # Node for communication with Rover system
 class Rover(Node):
@@ -51,7 +52,6 @@ class Rover(Node):
         )
         
         self.last_pose= [0.0, 0.0, 0.0] #[x, y, theta]
-        self.current_orientation = None
         self.LocationLibrary = {}
         self.facing_flag = False
         self.facing_point = None
@@ -90,16 +90,6 @@ class Rover(Node):
 
     def publish_point(self, target_point):
         point_msg = PointStamped()
-        timer_period = 0.5
-
-        # # get and limit angular velocity
-        # delta_theta = target_point[2] - self.current_pose[2]
-        # if delta_theta > PI:
-        #     delta_theta -= 2*PI
-        # if delta_theta < -PI:
-        #     delta_theta += 2*PI
-        # self.delta_theta = delta_theta
-        # wz = value_CLIP((delta_theta / timer_period), -MAX_OMEGA, MAX_OMEGA)
 
         point_msg.point.x = float(target_point[0])
         point_msg.point.y = float(target_point[1])
@@ -127,8 +117,6 @@ class BASEMOTION(Node):
         
         self.rover = Rover()
         self.rover.current_pose = [0, 0, 0]
-        self.rover.current_orientation = [0, 0, 0, 0]
-        self.position_now = [0, 0, 0]
         self.command_map = {
              0: lambda command: stop(command, self.rover),
              1: lambda command: go_Xaxis(command, self.rover),
@@ -138,6 +126,7 @@ class BASEMOTION(Node):
              5: lambda command: setMark(command, self.rover),
              6: lambda command: turn(command, self.rover),
             20: lambda command: Detect(command),
+            21: lambda command: Recognize(command),
         }   
         self.force_stop = False
         self.incomming_cmd = False
@@ -146,8 +135,8 @@ class BASEMOTION(Node):
     def query_callback(self, msg):
         # self.get_logger().info(f'cmd: {msg.data}')
         self.cmd = msg.data
-        print("cmd: ",self.cmd)
-        if self.cmd in ['stop', 'Stop', 'STOP', 'break', 'Break', 'BREAK', 'exit', 'Exit', 'EXIT']:
+        self.get_logger().info(f'Cmd list: {self.cmd}')
+        if self.cmd in stopping_vocab_list:
             self.force_stop = True
             self.rover.publish_point(self.rover.current_pose)
             print("Force stop...")
@@ -162,50 +151,52 @@ class BASEMOTION(Node):
     # Execute the command
     def exec_cmd(self):
         path = []
-        cnt = 0
         self.cmd = eval(self.cmd)
-        # single action
+        # For each single action
         for command in self.cmd:
+            self.get_logger().info("Ongoing command: ",command) # current command
             # if (self.force_stop == True):
             #     self.rover.publish_point(self.rover.current_pose)
             #     self.force_stop = False
             #     return
             
-            print("command: ",command)
-            if command[0] in self.command_map:
-                if 0 < command[0] < 10:
+            # Check for validation and specification of command
+            if command[0] in self.command_map: 
+                if 0 < command[0] < 10: # basic movement
                     path = self.command_map[command[0]](command[1:])
-                    if command[0] == 5 and path[0].lower() != 'ff':
-                        print('set mark:', path)
+                    if command[0] == 5 and path[0].lower() != 'ff': # save current location
+                        self.get_logger().info('Saving current location', path)
                         self.rover.LocationLibrary[path[0]] = path[1]
                         continue
-                if 20 <= command[0] < 30:
+                if 20 <= command[0] < 30: # visual detection
                     self.command_map[command[0]](command[1])
                     continue
-            # print("path: ",path) # debug purpose
+                
             if len(path) > 0:
+                # self.get_logger().debug("path: ",path) # debug purpose
                 for target_point in path:
                     rclpy.spin_once(self.rover, timeout_sec=0.01)
                     self.rover.last_pose = self.rover.current_pose
                     self.rover.nav_arrived_pos = False
                     self.rover.nav_arrived_angle = False
-                    print("Ready to move..."+f'{command}' )
-                    self.publish_response("Ready to move..."+f'{command}')
+                    self.get_logger().info("Ready to move... "+f'{command}' )
+                    self.publish_response("Ready to move... "+f'{command}')
                     # continue # debug purpose
-                    while (self.rover.nav_arrived_pos == False) or (self.rover.nav_arrived_angle == False):
-                        # print(cnt)
-                        # cnt+=1
+                    
+                    while (self.rover.nav_arrived_pos == False) or (self.rover.nav_arrived_angle == False): # close loop control
                         rclpy.spin_once(self.rover, timeout_sec=0.1)
                         rclpy.spin_once(self, timeout_sec=0.01)
                         self.pose_now = self.rover.current_pose
-                        self.get_logger().info(f"target: {target_point}, current: {self.pose_now}, command: {command}, nav_arrived_pos: {self.rover.nav_arrived_pos}, nav_arrived_angle: {self.rover.nav_arrived_angle}")
+                        self.get_logger().debug(f"target: {target_point}, current: {self.pose_now}, command: {command}, nav_arrived_pos: {self.rover.nav_arrived_pos}, nav_arrived_angle: {self.rover.nav_arrived_angle}")
+                        
                         if (self.force_stop == True):
                             self.rover.publish_point(self.rover.current_pose)
-                            # print("Force stop...")
+                            self.get_logger().info("Force stop...")
                             # break
                             return # TBD which is better
                         else:
                             self.rover.publish_point(target_point)
+                            
                     self.rover.facing_flag = False
                     self.rover.facing_point = None
                     self.rover.nav_arrived_pos = False
@@ -413,9 +404,16 @@ def turn(cmd, cmd_node):
 # vision detection cmd
 def Detect(target):
     format = f"ros2 topic pub /input_query std_msgs/String 'data: {target}' --once\nros2 topic pub /input_query std_msgs/String 'data: {target}' --once"
-    print(format)
+    # print(format)
     subprocess.run(format, capture_output=True, text=True, shell=True)
     return 
+
+# vision recognition cmd
+def Recognize(type):
+    format = 1
+    # print(format)
+    subprocess.run(format, capture_output=True, text=True, shell=True)
+    return
     
 def main(args=None):
     rclpy.init(args=args)
