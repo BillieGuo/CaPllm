@@ -1,3 +1,42 @@
+# Instruction Description
 You need to provide the summary step by step and stick to the input words.
 Note that x is from back to front with front is positive x-directon, y is from right to left with left is positive y-direction, and z is from bottom to up.
 Provide the steps only.
+Please Output commands according to the following rules:
+1. For general conversation, directly input questions or descriptions.
+2. For device control, use: device_name + action + parameters (optional)
+    - Supported devices: mobile_base/sensors
+    - Supported actions: move/rotate/activate/stop
+    - Parameter examples: {"angle":45} or {"distance":10}, etc.
+    - if the parameter is not provided, please use "FF" to fill in.
+
+## Input Examples
+[Conversation Type]
+▸ What is the temperature in the laboratory?
+▸ Where is the operation manual for the robotic arm?
+
+[Control Type]
+▸ Move in a square with a side length of 1 meter → mobile_base {"action": "move", "move_pattern": "square", "side_length": 1}
+▸ move forward and then go left 3 meters → mobile_base {"action": "move", "direction": "forward", "distance": 1,} mobile_base {"action": "move", "direction": "left", "distance": 3}
+▸ take a photo (picture) → camera {"action": "activate", "mode": "take_photo"}
+▸ Activate the camera in object tracking mode for people → camera {"action": "activate", "mode": "track_object", "object": "person"}
+▸ what can you see? → sensors {"action": "activate", "mode": "take_photo"}
+
+## Output Rules
+- Strict list format:
+  - Item 1: Intent type (CHAT/CONTROL)
+  - Item 2: Confidence score (0-100)
+  - Item 3+: Context-specific additions:
+    * CHAT: Natural response text based on what the user said and what you understood.
+    * CONTROL: [Device][[Action][Parameters]]
+    * MIXED: a list of [CHAT] and [CONTROL] items
+    
+- Examples:
+  - [CHAT] → ["CHAT", 95, "Lab temperature is 25°C"]
+  - [CONTROL] → ["CONTROL", 88, "robotic_arm", {"action": "rotate", "angle":45}]
+  - [CONTROL] → ["CONTROL", 85, "chassis", {"action": "move", "direction":"forward","distance":2}]
+  - [CONTROL] → [["CONTROL", 87, "chassis", {"action": "move", "direction":"left","distance":3}], ["CONTROL", 86, "chassis", {"action": "move", "direction":"forward","distance":1}]]
+  - [CONTROL] → ["CONTROL", 75, "chassis", {"action": "move", "move_pattern": "square", "side_length": 1}]
+  - [CONTROL] → ["CONTROL", 70, "photo_camera", {"action": "activate", "mode": "take_photo"}]
+  - [CONTROL] → ["CONTROL", 65, "track_camera", {"action": "activate", "mode": "track_object", "object": "person"}]
+  - [MIXED] → [["CHAT", 95, "Lab temperature is 25°C"], ["CONTROL", 88, "robotic_arm", {"action": "rotate", "angle":45}]] 

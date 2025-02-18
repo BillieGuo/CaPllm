@@ -88,44 +88,64 @@ def main():
 	action_history_max_len = 20
 	action_history_idx = 0
 
+	# Main loop
 	while True:
-	# if True: # test only
-		input_text = input("\n>>Prompt: ")
-		# rclpy.spin_once(query)
-		# input_text = query.voice_input
-		# input_text = "turn left for 180 degree and Go forward." # test only
-		if not input_text:
-			continue
-		if input_text == 'exit':
+		try:
+			input_text = input("\n\033[1;33m>> Prompt: ")
+			print("\033[0m")
+			# rclpy.spin_once(query)
+			# input_text = query.voice_input
+			# input_text = "turn left for 180 degree and Go forward." # test only
+			if not input_text:
+				continue
+			if input_text == 'exit':
+				break
+			if input_text in stopping_vocab_list:
+				query.publish_cmd("stop")
+				continue
+
+			# Main loop
+			success = False
+			while not success:
+
+				# history stored in format of [input_text, result]
+				result, success = preview(input_text)  
+				print(result)
+				print("*"*80)
+				intermediate = list(eval(result))
+				print(intermediate)
+				if intermediate[0] == "CHAT":
+					print("\033[1;31m>> Chat: ", intermediate[2], "\033[0m")
+					print("*"*80)
+					continue
+				elif intermediate[0] == "MIXED":
+					for cmd in range(2, len(intermediate)):
+						if intermediate[cmd][0] == "CHAT":
+							print("\033[1;31m>> Chat: ", intermediate[cmd][2], "\033[0m")
+							print("*"*80)
+
+				# input_text = [intermediate[0], intermediate[2:]]
+				model_input = f'Query: {intermediate}'
+				# model_input = f'Query: {input_text}'
+				# model_input = f'Query: {result}'
+				# print("*"*80)
+				print(model_input)
+				print("*"*80)
+				result, success = model(model_input)
+				print(result, success)
+				print("*"*80)
+				# input()
+				# continue
+				if success:
+					# query_history_idx = (query_history_idx + 1) % query_history_max_len
+					# query_history[query_history_idx] = [input_text, result]
+					query.publish_cmd(result)
+					query.voice_input = None
+		except KeyboardInterrupt:
+			print("\033[0m")
+			print("KeyboardInterrupt")
 			break
-		if input_text in stopping_vocab_list:
-			query.publish_cmd("stop")
-			continue
-
-		# Main loop
-		success = False
-		while not success:
-
-			# history stored in format of [input_text, result]
-			print("*"*80)
-			result, success = preview(input_text)  
-			print(result, success)
-			print("*"*80)
-			# model_input = f'Query: {input_text}'
-			model_input = f'Query: {result}'
-			# print("*"*80)
-			# print(model_input)
-			print("*"*80)
-			result, success = model(model_input)
-			print(result, success)
-			print("*"*80)
-			# input()
-			# continue
-			if success:
-				# query_history_idx = (query_history_idx + 1) % query_history_max_len
-				# query_history[query_history_idx] = [input_text, result]
-				query.publish_cmd(result)
-				query.voice_input = None
+		
 
 	rclpy.shutdown()
  
