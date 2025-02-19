@@ -42,7 +42,9 @@ class QUERY(Node):
         )
 		self.voice_input_sub
 		self.vision_info = []
+		self.vision_history = []
 		self.vision_update = False
+		self.vision_buffer_cnt = 0
 
 	# Receive response from Basemotion
 	def query_callback(self, msg):
@@ -52,8 +54,15 @@ class QUERY(Node):
 	def vision_response_callback(self, msg):
 		# self.get_logger().info(f'vision response: {msg.data}')
 		if msg.data:
+			if self.vision_buffer_cnt < 3:
+				self.vision_buffer_cnt += 1
+				return
 			self.vision_info = list(eval(msg.data))
+			for obj in self.vision_info:
+				if obj not in self.vision_history:
+					self.vision_history.append(obj)
 			self.vision_update = True
+			self.vision_buffer_cnt = 0
 		
 	# Publish command to Basemotion
 	def publish_cmd(self, cmd):
@@ -92,7 +101,7 @@ def main():
 	# init
 	rclpy.init()
 	preview, model = model_init() 
-	base_motion = BASEMOTION()
+	# base_motion = BASEMOTION()
 	query = QUERY()
 	# history stored in format of [input_text, result]
 	# max length of query history is 10
@@ -106,11 +115,12 @@ def main():
 	# Main loop
 	while True:
 		try:
-			input_text = input("\n\033[1;33m>> Prompt: ")
-			print("\033[0m")
-			# rclpy.spin_once(query)
-			# input_text = query.voice_input
+			# input_text = input("\n\033[1;33m>> Prompt: ")
+			# print("\033[0m")
+			rclpy.spin_once(query)
+			input_text = query.voice_input
 			# input_text = "turn left for 180 degree and Go forward." # test only
+			
 			if not input_text:
 				continue
 			if input_text == 'exit':
@@ -123,8 +133,8 @@ def main():
 			while not success:
 
 				# history stored in format of [input_text, result]
-				if query.vision_info:
-					input_text = f'What you can see: {query.vision_info}, the user said: {input_text}'
+				if query.vision_info or query.vision_history:
+					input_text = f'Throughout the history, the total object you see are: {query.vision_history}; The follow object(s) is in your current vision view: {query.vision_info}; the user said: {input_text}'
 				result, success = preview(input_text)  
 				print(result)
 				print("*"*80)
@@ -141,6 +151,7 @@ def main():
 								print("\033[1;31m>> Chat: ", intermediate[cmd][2], "\033[0m")
 								print("*"*80)
 				except Exception as e:
+					query.get_logger().info(f'Error: {e}')
 					continue
  
 				# input_text = [intermediate[0], intermediate[2:]]
@@ -159,10 +170,16 @@ def main():
 					query.publish_cmd(result)
 					query.voice_input = None
 				time.sleep(1)
-				rclpy.spin_once(query)
-				if query.vision_update and result[0][0] == "21":
-					query.vision_update = False
-					print("\033[1;31m>> Chat: I can now see the following objects: ", query.vision_info, "\033[0m")
+
+				result = list(eval(result))
+				if result[0][0] == 21:
+					while not query.vision_update:
+						rclpy.spin_once(query)
+						if query.vision_update:
+							query.vision_update = False
+							print("\033[1;31m>> Chat: I can now see the following objects: ", query.vision_info, "\033[0m")
+							print(query.vision_history)
+							break
 		except KeyboardInterrupt:
 			print("\033[0m")
 			print("KeyboardInterrupt")

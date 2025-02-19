@@ -122,12 +122,12 @@ class BASEMOTION(Node):
             'response',
             10
         )
-        self.vision_response_str_sub = self.create_subscription(
-            String,
-            'yolo_detections_str',
-            self.vision_response_callback,
-            10
-        )
+        # self.vision_response_str_sub = self.create_subscription(
+        #     String,
+        #     'yolo_detections_str',
+        #     self.vision_response_callback,
+        #     10
+        # )
         
         self.rover = Rover()
         self.rover.current_pose = [0, 0, 0]
@@ -409,6 +409,8 @@ def turn(cmd, cmd_node):
         y_t      = cmd_node.LocationLibrary[name][1]
         print("cmd_nodeLibrary: ",cmd_node.LocationLibrary)
     elif cmd[1] == 'FF' or cmd[2] == 'FF':
+        if cmd[3] == 'FF': 
+            cmd[3] = 1
         euler    = cmd[3] * cmd[4] / 180.0 * PI
         position = [cmd_node.current_pose[0], cmd_node.current_pose[1], cmd_node.current_pose[2] + euler]
         point.append(position)
