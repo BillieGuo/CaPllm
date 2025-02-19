@@ -183,7 +183,8 @@ class BASEMOTION(Node):
                 if 0 < command[0] < 10: # basic movement
                     path = self.command_map[command[0]](command[1:])
                     if command[0] == 5 and path[0].lower() != 'ff': # save current location
-                        self.get_logger().info('Saving current location', path)
+                        print(path)
+                        self.get_logger().info(f'Saving current location: {path}')
                         self.rover.LocationLibrary[path[0]] = path[1]
                         continue
                 if 20 <= command[0] < 30: # visual detection

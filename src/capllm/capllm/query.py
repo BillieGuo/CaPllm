@@ -44,6 +44,7 @@ class QUERY(Node):
 		self.vision_info = []
 		self.vision_history = []
 		self.vision_update = False
+		self.detection_fail = False
 
 	# Receive response from Basemotion
 	def query_callback(self, msg):
@@ -53,6 +54,8 @@ class QUERY(Node):
 	def vision_response_callback(self, msg):
 		# self.get_logger().info(f'vision response: {msg.data}')
 		if msg.data:
+			if msg.data == "Target not found":
+				self.detection_fail = True
 			self.vision_info = list(eval(msg.data))
 			for obj in self.vision_info:
 				if obj not in self.vision_history:
@@ -167,15 +170,18 @@ def main():
 					query.voice_input = None
 				time.sleep(1)
 
-				# result = list(eval(result))
-				# if result[0][0] == 21:
-				# 	while not query.vision_update:
-				# 		rclpy.spin_once(query)
-				# 		if query.vision_update:
-				# 			query.vision_update = False
-				# 			print("\033[1;31m>> Chat: I can now see the following objects: ", query.vision_info, "\033[0m")
-				# 			print(query.vision_history)
-				# 			break
+				try: 
+					results = list(eval(result))
+					if results[0][0] == 20:
+						while not query.vision_update:
+							rclpy.spin_once(query)
+							if query.vision_update:
+								print("\033[1;31m>> Chat: Sorry, I can not find it.\033[0m")
+								query.detection_fail = False
+								break
+				except Exception as e:
+					# query.get_logger().info(f'Error: {e}')
+					continue
 		except KeyboardInterrupt:
 			print("\033[0m")
 			print("KeyboardInterrupt")
