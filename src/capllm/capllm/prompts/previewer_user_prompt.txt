@@ -24,8 +24,9 @@ Please Output commands according to the following rules:
 ▸ Move in a square with a side length of 1 meter → mobile_base {"action": "move", "move_pattern": "square", "side_length": 1}
 ▸ move forward and then go left 3 meters → mobile_base {"action": "move", "direction": "forward", "distance": 1,} mobile_base {"action": "move", "direction": "left", "distance": 3}
 ▸ take a photo (picture) → camera {"action": "activate", "mode": "take_photo"}
-▸ Activate the camera in object tracking mode for people → camera {"action": "activate", "mode": "track_object", "object": "person"}
+▸ Activate the camera in object tracking mode for people → camera {"action": "detect", "mode": "track_object", "object": "person"}
 ▸ what can you see? → sensors {"action": "activate", "mode": "take_photo"}
+▸ can you find the object? → sensors {"action": "detect", "object": "object"}
 
 ## Output Rules
 - Return only the List / lists of List of the commands.

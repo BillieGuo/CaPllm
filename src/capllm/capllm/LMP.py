@@ -151,7 +151,6 @@ class LMP:
                 quantization_config = quantization_config,
                 torch_dtype = torch.float16,
                 device_map = {"":0}, #auto
-                # trust_remote_code = True,
                 token=token,
                 local_files_only=True, # local LLM
             )

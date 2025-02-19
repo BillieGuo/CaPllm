@@ -44,7 +44,6 @@ class QUERY(Node):
 		self.vision_info = []
 		self.vision_history = []
 		self.vision_update = False
-		self.vision_buffer_cnt = 0
 
 	# Receive response from Basemotion
 	def query_callback(self, msg):
@@ -54,15 +53,11 @@ class QUERY(Node):
 	def vision_response_callback(self, msg):
 		# self.get_logger().info(f'vision response: {msg.data}')
 		if msg.data:
-			if self.vision_buffer_cnt < 3:
-				self.vision_buffer_cnt += 1
-				return
 			self.vision_info = list(eval(msg.data))
 			for obj in self.vision_info:
 				if obj not in self.vision_history:
 					self.vision_history.append(obj)
 			self.vision_update = True
-			self.vision_buffer_cnt = 0
 		
 	# Publish command to Basemotion
 	def publish_cmd(self, cmd):
@@ -115,10 +110,11 @@ def main():
 	# Main loop
 	while True:
 		try:
-			# input_text = input("\n\033[1;33m>> Prompt: ")
-			# print("\033[0m")
-			rclpy.spin_once(query)
-			input_text = query.voice_input
+			input_text = input("\n\033[1;33m>> Prompt: ")
+			print("\033[0m")
+			rclpy.spin_once(query, timeout_sec=0.1)
+			# rclpy.spin_once(query)
+			# input_text = query.voice_input
 			# input_text = "turn left for 180 degree and Go forward." # test only
 			
 			if not input_text:
@@ -171,15 +167,15 @@ def main():
 					query.voice_input = None
 				time.sleep(1)
 
-				result = list(eval(result))
-				if result[0][0] == 21:
-					while not query.vision_update:
-						rclpy.spin_once(query)
-						if query.vision_update:
-							query.vision_update = False
-							print("\033[1;31m>> Chat: I can now see the following objects: ", query.vision_info, "\033[0m")
-							print(query.vision_history)
-							break
+				# result = list(eval(result))
+				# if result[0][0] == 21:
+				# 	while not query.vision_update:
+				# 		rclpy.spin_once(query)
+				# 		if query.vision_update:
+				# 			query.vision_update = False
+				# 			print("\033[1;31m>> Chat: I can now see the following objects: ", query.vision_info, "\033[0m")
+				# 			print(query.vision_history)
+				# 			break
 		except KeyboardInterrupt:
 			print("\033[0m")
 			print("KeyboardInterrupt")

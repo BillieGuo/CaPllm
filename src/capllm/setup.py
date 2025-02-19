@@ -22,6 +22,7 @@ setup(
         'console_scripts': [
             'query = capllm.query:main',
             'BaseMotion = capllm.BaseMotion:main',
+            'yolo = capllm.yolo:main',
         ],
     },
 )
