@@ -34,13 +34,28 @@ class QUERY(Node):
 			'voice_input',
 			self.voice_input_callback,
 			10)
+		self.vision_response_str_sub = self.create_subscription(
+            String,
+            'yolo_detections_str',
+            self.vision_response_callback,
+            10
+        )
 		self.voice_input_sub
+		self.vision_info = []
+		self.vision_update = False
 
-	# Receive response from LLM
+	# Receive response from Basemotion
 	def query_callback(self, msg):
-		self.get_logger().info('BaseMotion: "%s"' % msg)	
+		# self.get_logger().info('BaseMotion: "%s"' % msg)
+		return
+  	
+	def vision_response_callback(self, msg):
+		# self.get_logger().info(f'vision response: {msg.data}')
+		if msg.data:
+			self.vision_info = list(eval(msg.data))
+			self.vision_update = True
 		
-	# Publish command to LLM
+	# Publish command to Basemotion
 	def publish_cmd(self, cmd):
 		msg = String()
 		msg.data = cmd
@@ -104,31 +119,33 @@ def main():
 				query.publish_cmd("stop")
 				continue
 
-			# Main loop
 			success = False
 			while not success:
 
 				# history stored in format of [input_text, result]
+				if query.vision_info:
+					input_text = f'What you can see: {query.vision_info}, the user said: {input_text}'
 				result, success = preview(input_text)  
 				print(result)
 				print("*"*80)
-				intermediate = list(eval(result))
-				print(intermediate)
-				if intermediate[0] == "CHAT":
-					print("\033[1;31m>> Chat: ", intermediate[2], "\033[0m")
-					print("*"*80)
+				try:
+					intermediate = list(eval(result))
+					print(intermediate)
+					if intermediate[0] == "CHAT":
+						print("\033[1;31m>> Chat: ", intermediate[2], "\033[0m")
+						print("*"*80)
+						break
+					elif intermediate[0] == "MIXED":
+						for cmd in range(2, len(intermediate)):
+							if intermediate[cmd][0] == "CHAT":
+								print("\033[1;31m>> Chat: ", intermediate[cmd][2], "\033[0m")
+								print("*"*80)
+				except Exception as e:
 					continue
-				elif intermediate[0] == "MIXED":
-					for cmd in range(2, len(intermediate)):
-						if intermediate[cmd][0] == "CHAT":
-							print("\033[1;31m>> Chat: ", intermediate[cmd][2], "\033[0m")
-							print("*"*80)
-
+ 
 				# input_text = [intermediate[0], intermediate[2:]]
 				model_input = f'Query: {intermediate}'
 				# model_input = f'Query: {input_text}'
-				# model_input = f'Query: {result}'
-				# print("*"*80)
 				print(model_input)
 				print("*"*80)
 				result, success = model(model_input)
@@ -141,6 +158,11 @@ def main():
 					# query_history[query_history_idx] = [input_text, result]
 					query.publish_cmd(result)
 					query.voice_input = None
+				time.sleep(1)
+				rclpy.spin_once(query)
+				if query.vision_update and result[0][0] == "21":
+					query.vision_update = False
+					print("\033[1;31m>> Chat: I can now see the following objects: ", query.vision_info, "\033[0m")
 		except KeyboardInterrupt:
 			print("\033[0m")
 			print("KeyboardInterrupt")

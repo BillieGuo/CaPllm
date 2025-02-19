@@ -6,6 +6,9 @@ from capllm.utils import to_euler, angle_calculation, value_CLIP, value_NORM
 import math
 from std_msgs.msg import Bool, String
 import subprocess
+from sensor_msgs.msg import Image
+import cv2
+import numpy as np
 
 PI = math.pi
 ANGLE_THRESHOLD = 0.09
@@ -48,6 +51,11 @@ class Rover(Node):
             PointStamped,
             'detect_point',
             self.vision_detect_callback,
+            10
+        )
+        self.vision_pub = self.create_publisher(
+            String,
+            'vision_llm',
             10
         )
         
@@ -114,6 +122,12 @@ class BASEMOTION(Node):
             'response',
             10
         )
+        self.vision_response_str_sub = self.create_subscription(
+            String,
+            'yolo_detections_str',
+            self.vision_response_callback,
+            10
+        )
         
         self.rover = Rover()
         self.rover.current_pose = [0, 0, 0]
@@ -125,21 +139,25 @@ class BASEMOTION(Node):
              4: lambda command: circle(command, self.rover),
              5: lambda command: setMark(command, self.rover),
              6: lambda command: turn(command, self.rover),
-            20: lambda command: Detect(command),
-            21: lambda command: Recognize(command),
+            20: lambda command: Detect(command, self.rover),
+            21: lambda command: Recognize(command, self.rover),
         }   
         self.force_stop = False
         self.incomming_cmd = False
+        self.get_logger().info('BaseMotion node initialized')
 
+    def vision_response_callback(self, msg):
+        self.get_logger().info(f'vision response: {msg.data}')
+        # self.publish_response(msg.data)
 
     def query_callback(self, msg):
         # self.get_logger().info(f'cmd: {msg.data}')
         self.cmd = msg.data
-        self.get_logger().info(f'Cmd list: {self.cmd}')
+        self.get_logger().info(f'Cmd list: {self.cmd}') 
         if self.cmd in stopping_vocab_list:
             self.force_stop = True
             self.rover.publish_point(self.rover.current_pose)
-            print("Force stop...")
+            print("Force stop...")            
             return
         self.incomming_cmd = True
 
@@ -154,7 +172,7 @@ class BASEMOTION(Node):
         self.cmd = eval(self.cmd)
         # For each single action
         for command in self.cmd:
-            self.get_logger().info("Ongoing command: ",command) # current command
+            self.get_logger().info(f"Ongoing command: {command}") # current command
             # if (self.force_stop == True):
             #     self.rover.publish_point(self.rover.current_pose)
             #     self.force_stop = False
@@ -201,11 +219,13 @@ class BASEMOTION(Node):
                     self.rover.facing_point = None
                     self.rover.nav_arrived_pos = False
                     self.rover.nav_arrived_angle = False
+        # self.publish_response("Task completed")    
 
     # Main loop
     def run(self):
         while rclpy.ok():
-            rclpy.spin_once(self)
+            rclpy.spin_once(self, timeout_sec=0.01)
+            rclpy.spin_once(self.rover, timeout_sec=0.01)
             if self.incomming_cmd == False:
                 continue
             
@@ -402,17 +422,20 @@ def turn(cmd, cmd_node):
     return point
 
 # vision detection cmd
-def Detect(target):
-    format = f"ros2 topic pub /input_query std_msgs/String 'data: {target}' --once\nros2 topic pub /input_query std_msgs/String 'data: {target}' --once"
-    # print(format)
-    subprocess.run(format, capture_output=True, text=True, shell=True)
+def Detect(target, cmd_node):
+    msg = String()
+    msg.data = "target: " + target
+    
+    cmd_node.vision_pub.publish(msg)
+    
     return 
 
 # vision recognition cmd
-def Recognize(type):
-    format = 1
-    # print(format)
-    subprocess.run(format, capture_output=True, text=True, shell=True)
+def Recognize(_, cmd_node):
+    msg = String()
+    msg.data = "oneshot"
+    for _ in range(2):
+        cmd_node.vision_pub.publish(msg)
     return
     
 def main(args=None):

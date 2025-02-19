@@ -25,6 +25,10 @@
 [[1, '+FF', 3, 4, 'FF']]
 #done
 
+#Query: move in a square with a side length of 1 meter
+[[1, 1, 'FF', 'FF', 'FF'], [2, 1, 'FF', 'FF', 'FF'], [1, -1, 'FF', 'FF', 'FF'], [2, -1, 'FF', 'FF', 'FF']]
+#done
+
 #Query: go to point (3, 4)
 #this is a single action. So in the list, there is only one list. Because 3 represent go to a given point, so the first number in the list is 4, no name of point is mentioned, the second element is 'FF', the point is (3, 4), so the third fourth number is 3 and 4. No facing is needed, thus the rest of the list is 'FF'.
 [[3, 'FF', 3, 4, 'FF', 'FF', 'FF']]
@@ -80,9 +84,9 @@
 #done
 
 #Query: take a photo
-[[21]]
+[[21, 'FF']]
 #done
 
 #Query: take a picture
-[[21]]
+[[21, 'FF']]
 #done

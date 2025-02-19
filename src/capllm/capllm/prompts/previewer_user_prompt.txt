@@ -9,6 +9,7 @@ Please Output commands according to the following rules:
     - Supported actions: move/rotate/activate/stop
     - Parameter examples: {"angle":45} or {"distance":10}, etc.
     - if the parameter is not provided, please use "FF" to fill in.
+3. Sometimes, when the vision_info is provided by previous commands, you can use the vision_info to help you to complete the task.
 
 ## Input Examples
 [Conversation Type]
@@ -23,6 +24,7 @@ Please Output commands according to the following rules:
 ▸ what can you see? → sensors {"action": "activate", "mode": "take_photo"}
 
 ## Output Rules
+- Return only the List / lists of List of the commands.
 - Strict list format:
   - Item 1: Intent type (CHAT/CONTROL)
   - Item 2: Confidence score (0-100)
