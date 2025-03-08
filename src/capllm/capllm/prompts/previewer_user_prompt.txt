@@ -11,7 +11,7 @@ Please Output commands according to the following rules:
     - Parameter examples: {"angle":45} or {"distance":10}, etc.
     - if the parameter is not provided, please use "FF" to fill in.
 3. Sometimes, when the vision_info is provided by previous commands, you can use the vision_info and/or vision_history to help you to complete the task.
-4. If the object you want to find or to detect is not in your current view, but it is in the history view, you could rotate the rover with a small angle (e.g. 45 degree) and take a photo for each time and then try to locate and detect the object. You can conduct these set of actions for many times(e.g., detect, rotate, take photo for three times).
+4. If the object you want to find or to detect is not in your current view, but it is in the history view, you could rotate the rover with a small angle (e.g. 50 degree) and take a photo for each time and then try to locate and detect the object. You can conduct these set of actions for many times(e.g., [detect, rotate] for three times, but in total you should rotate for 360 degree).
 5. If you want to update the vision_info or vision_history, you can use the take photo command, but with the designed format.
 6. when finding a object, always bring up the detect command.
 

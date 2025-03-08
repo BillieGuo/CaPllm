@@ -34,6 +34,10 @@ class QUERY(Node):
 			'voice_input',
 			self.voice_input_callback,
 			10)
+		self.voice_input_pub = self.create_publisher(
+			String,
+			'llm_to_voice',
+			10)
 		self.vision_response_str_sub = self.create_subscription(
             String,
             'yolo_detections_str',
@@ -41,6 +45,7 @@ class QUERY(Node):
             10
         )
 		self.voice_input_sub
+		self.voice_input = ""
 		self.vision_info = []
 		self.vision_history = []
 		self.vision_update = False
@@ -50,18 +55,36 @@ class QUERY(Node):
 	def query_callback(self, msg):
 		# self.get_logger().info('BaseMotion: "%s"' % msg)
 		return
-  	
+  	# original version
 	def vision_response_callback(self, msg):
-		# self.get_logger().info(f'vision response: {msg.data}')
+		self.get_logger().info(f'vision response: {msg.data}')
 		if msg.data:
 			if msg.data == "Target not found":
 				self.detection_fail = True
-			self.vision_info = list(eval(msg.data))
-			for obj in self.vision_info:
-				if obj not in self.vision_history:
-					self.vision_history.append(obj)
-			self.vision_update = True
-		
+				self.vision_update = True
+
+			elif msg.data == "Object found":
+				self.detection_fail = False
+				self.vision_update = True
+			else:
+				self.vision_info = list(eval(msg.data))
+				for obj in self.vision_info:
+					if obj not in self.vision_history:
+						self.vision_history.append(obj)
+				self.vision_update = True
+
+	# def vision_response_callback(self, msg):
+	# 	self.get_logger().info(f'vision response: {msg.data}')
+	# 	if msg.data:
+	# 		if msg.data == "Target not found":
+	# 			self.detection_fail = True
+	# 		self.vision_info = list(eval(msg.data))
+
+	# 		for obj in self.vision_info:
+	# 			if obj not in self.vision_history:
+	# 				self.vision_history.append(obj)
+	# 		self.vision_update = True
+
 	# Publish command to Basemotion
 	def publish_cmd(self, cmd):
 		msg = String()
@@ -70,8 +93,10 @@ class QUERY(Node):
 
 	# Receive voice input
 	def voice_input_callback(self, msg):
-		self.get_logger().info('I heard: "%s"' % msg)	
-		self.voice_input = msg.data
+		self.voice_input = ""
+		if msg:
+			self.get_logger().info('I heard: "%s"' % msg)	
+			self.voice_input = msg.data
 
 def model_init():
 	cfg = get_config('capllm/configs/config.yaml')['lmps']
@@ -113,11 +138,12 @@ def main():
 	# Main loop
 	while True:
 		try:
-			input_text = input("\n\033[1;33m>> Prompt: ")
-			print("\033[0m")
-			rclpy.spin_once(query, timeout_sec=0.1)
-			# rclpy.spin_once(query)
-			# input_text = query.voice_input
+			# input_text = input("\n\033[1;33m>> Prompt: ")
+			# print("\033[0m")
+			# rclpy.spin_once(query, timeout_sec=0.1)
+			input_text = None
+			rclpy.spin_once(query)
+			input_text = query.voice_input
 			# input_text = "turn left for 180 degree and Go forward." # test only
 			
 			if not input_text:
@@ -135,7 +161,7 @@ def main():
 				if query.vision_info or query.vision_history:
 					input_text = f'Throughout the history, the total object you see are: {query.vision_history}; The follow object(s) is in your current vision view: {query.vision_info}; the user said: {input_text}'
 				result, success = preview(input_text)  
-				print(result)
+				print(result, success)
 				print("*"*80)
 				try:
 					intermediate = list(eval(result))
@@ -143,12 +169,17 @@ def main():
 					if intermediate[0] == "CHAT":
 						print("\033[1;31m>> Chat: ", intermediate[2], "\033[0m")
 						print("*"*80)
-						break
+						tx = String()
+						tx.data = intermediate[2]
+						query.voice_input_pub.publish(tx)
 					elif intermediate[0] == "MIXED":
 						for cmd in range(2, len(intermediate)):
 							if intermediate[cmd][0] == "CHAT":
 								print("\033[1;31m>> Chat: ", intermediate[cmd][2], "\033[0m")
 								print("*"*80)
+								tx = String()
+								tx.data = intermediate[cmd][2]
+								query.voice_input_pub.publish(tx)
 				except Exception as e:
 					query.get_logger().info(f'Error: {e}')
 					continue
@@ -172,16 +203,18 @@ def main():
 
 				try: 
 					results = list(eval(result))
-					if results[0][0] == 20:
-						while not query.vision_update:
-							rclpy.spin_once(query)
-							if query.vision_update:
-								print("\033[1;31m>> Chat: Sorry, I can not find it.\033[0m")
-								query.detection_fail = False
-								break
 				except Exception as e:
-					# query.get_logger().info(f'Error: {e}')
+					query.get_logger().info(f'Error: {e}')
+					print(result)
 					continue
+				if results[0][0] == 20:
+					query.vision_update = False
+					while not query.vision_update:
+						rclpy.spin_once(query)
+						if query.detection_fail:
+							print("\033[1;31m>> Chat: Sorry, I can not find it.\033[0m")
+							query.detection_fail = False
+							break
 		except KeyboardInterrupt:
 			print("\033[0m")
 			print("KeyboardInterrupt")
