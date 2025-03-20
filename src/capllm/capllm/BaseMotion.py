@@ -58,7 +58,7 @@ class Rover(Node):
             'vision_llm',
             10
         )
-        
+
         self.last_pose= [0.0, 0.0, 0.0] #[x, y, theta]
         self.LocationLibrary = {}
         self.facing_flag = False
@@ -122,12 +122,12 @@ class BASEMOTION(Node):
             'response',
             10
         )
-        # self.vision_response_str_sub = self.create_subscription(
-        #     String,
-        #     'yolo_detections_str',
-        #     self.vision_response_callback,
-        #     10
-        # )
+        self.vision_response_str_sub = self.create_subscription(
+            String,
+            'yolo_detections_str',
+            self.vision_response_callback,
+            10
+        )
         
         self.rover = Rover()
         self.rover.current_pose = [0, 0, 0]
@@ -144,11 +144,16 @@ class BASEMOTION(Node):
         }   
         self.force_stop = False
         self.incomming_cmd = False
+        self.vision_update = False
         self.get_logger().info('BaseMotion node initialized')
 
     def vision_response_callback(self, msg):
-        self.get_logger().info(f'vision response: {msg.data}')
-        # self.publish_response(msg.data)
+        if msg:
+            if msg.data == "Object found" or msg.data == "Target not found":
+                # self.get_logger().info(f'vision response')
+                self.vision_update = True
+                return
+        # self.vision_update = False
 
     def query_callback(self, msg):
         # self.get_logger().info(f'cmd: {msg.data}')
@@ -189,6 +194,10 @@ class BASEMOTION(Node):
                         continue
                 if 20 <= command[0] < 30: # visual detection
                     self.command_map[command[0]](command[1])
+                    if command[0] == 21:
+                        while not self.vision_update:
+                            rclpy.spin_once(self, timeout_sec=0.1)
+                        self.vision_update = False
                     continue
                 
             if len(path) > 0:
