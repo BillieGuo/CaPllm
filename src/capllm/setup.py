@@ -23,6 +23,7 @@ setup(
             'query = capllm.query:main',
             'BaseMotion = capllm.BaseMotion:main',
             'yolo = capllm.yolo:main',
+            'socket = capllm.socket_comm:main',
         ],
     },
 )
